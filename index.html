@@ -1,6 +1,7 @@
 <!doctype html>
 <!--
-  Type Garden — a standalone rebuild of Type Garden (type-garden.vercel.app) by Akshat Agarwal.
+  Type Garden by Nihal.
+  Based on Type Garden (type-garden.vercel.app) by Akshat Agarwal.
   As you type, stems and roses grow out of the letters. Space cuts the stems so the next word
   grows a new garden, backspace withers, enter clears.
   One file, canvas + plain JavaScript, no build step.
@@ -9,10 +10,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual">
-<title>Type Garden</title>
+<title>Type Garden · Nihal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,700;1,700&family=Bricolage+Grotesque:wght@700&family=Dancing+Script:wght@700&family=Unbounded:wght@700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none}
 a{color:#fff} a:hover{color:#FFB4A8}
@@ -43,7 +44,20 @@ html[data-touch] [data-tg="app"]{touch-action:none;top:var(--tg-top,0px)!importa
 [data-tg="panel"]{border-right:1px solid #1E1E1E;overflow-y:auto;overflow-x:hidden;padding:24px 22px 32px;display:flex;flex-direction:column;gap:26px;background:#0A0A0A}
 .sec{display:flex;flex-direction:column;gap:10px}
 .lbl{color:#8C8C8C;text-transform:uppercase;font-size:11px;letter-spacing:0.08em}
-.serif{font-family:'Playfair Display',Georgia,serif;font-weight:700}
+.serif{font-family:var(--tg-font,'Playfair Display',Georgia,serif);font-weight:var(--tg-fw,700);font-style:var(--tg-fst,normal)}
+[data-tg="credit"]{position:absolute;top:calc(22px + env(safe-area-inset-top));left:calc(24px + env(safe-area-inset-left));font-size:12px;letter-spacing:0.04em;opacity:0.6;pointer-events:none}
+[data-tg="gpanel"]{position:absolute;z-index:6;right:calc(24px + env(safe-area-inset-right));bottom:72px;width:min(360px,calc(100vw - 32px));max-height:calc(100% - 150px);overflow-y:auto;overflow-x:hidden;box-sizing:border-box;background:#0A0A0A;border:1px solid #2A2A2A;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:18px;color:#EDEDED;font-size:12px;letter-spacing:0.03em;cursor:default;touch-action:pan-y}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid #2A2A2A;background:transparent;color:#EDEDED;border-radius:999px;padding:6px 11px;font:inherit;font-size:12px;cursor:pointer}
+.chip:hover{border-color:#8C8C8C}
+.chip[aria-pressed="true"]{background:#FFFFFF;color:#000000;border-color:#FFFFFF}
+.swgrid{display:grid;grid-template-columns:repeat(10,22px);justify-content:space-between;row-gap:8px}
+.srow{display:grid;grid-template-columns:62px minmax(0,1fr) 40px;align-items:center;gap:10px;color:#BDBDBD}
+.srow input{width:100%;accent-color:#FFFFFF;margin:0}
+.srow .sval{text-align:right;color:#8C8C8C}
+#gbtn{display:inline-flex;align-items:center;gap:7px}
+#gbtn .gdot{width:9px;height:9px;border-radius:50%}
+#gbtn[aria-expanded="true"]{background:#0A0A0A;border-color:#0A0A0A;color:#FFFFFF}
 #ptext{background:#000;border:1px solid #2A2A2A;border-radius:10px;color:#FFFFFF;font-size:22px;padding:10px 12px;outline:none;-webkit-user-select:text;user-select:text}
 #ptext:focus{border-color:#FFFFFF}
 .ghost{background:transparent;border:1px solid #2A2A2A;color:#EDEDED;font:inherit;padding:8px 12px;border-radius:999px;cursor:pointer}
@@ -66,6 +80,9 @@ button:disabled{opacity:.5;cursor:default}
   [data-tg="sw"]{--sw:clamp(13px,calc((100vw - 183px) / 10),22px);width:var(--sw);height:var(--sw)}
   [data-tg="dot"]{width:calc(var(--sw) * .46);height:calc(var(--sw) * .46)}
   [data-tg="btn"]{padding:7px 11px}
+  [data-tg="gpanel"]{left:calc(16px + env(safe-area-inset-left));right:calc(16px + env(safe-area-inset-right));width:auto}
+  .swgrid{grid-template-columns:repeat(10,minmax(0,22px))}
+  [data-tg="credit"]{left:calc(16px + env(safe-area-inset-left))}
 }
 @media (max-width:720px){
   [data-tg="poster"]{display:flex;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
@@ -81,6 +98,7 @@ button:disabled{opacity:.5;cursor:default}
   <canvas id="cv"></canvas>
   <input id="inp" data-tg="input" aria-label="Type to grow a garden" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false">
 
+  <div data-tg="credit" id="credit">Type Garden · by Nihal</div>
   <div data-tg="modes" id="modes"></div>
 
   <div data-tg="bar" id="bar">
@@ -91,10 +109,18 @@ button:disabled{opacity:.5;cursor:default}
       <span data-tg="fine">enter clears</span><span data-tg="coarse">return clears</span>
     </div>
     <div data-tg="ctrls">
-      <div data-tg="pal" id="pal"></div>
+      <button data-tg="btn" id="gbtn" aria-expanded="false" aria-controls="gpanel"><span class="gdot" id="gdot"></span>Garden</button>
       <button data-tg="btn" id="png">PNG</button>
       <button data-tg="btn" id="svg">SVG</button>
     </div>
+  </div>
+
+  <div data-tg="gpanel" id="gpanel" hidden>
+    <div class="sec"><div class="lbl">Flower</div><div class="chips" id="g-flower"></div></div>
+    <div class="sec"><div class="lbl">Typeface</div><div class="chips" id="g-font"></div></div>
+    <div class="sec"><div class="lbl">Palette · <span id="g-palname" style="text-transform:none"></span></div><div class="swgrid" id="g-pal"></div></div>
+    <div class="sec"><div class="lbl">Motion</div><div class="sec" id="g-motion"></div></div>
+    <div class="sec"><div class="lbl">In the air</div><div class="chips" id="g-weather"></div></div>
   </div>
 
   <div data-tg="poster" id="poster" hidden>
@@ -102,6 +128,7 @@ button:disabled{opacity:.5;cursor:default}
       <div style="display:flex;flex-direction:column;gap:4px">
         <div class="serif" style="font-size:26px;letter-spacing:0;color:#FFFFFF">Poster</div>
         <div id="info" style="color:#8C8C8C"></div>
+        <div style="color:#8C8C8C">Type Garden by Nihal</div>
       </div>
       <div class="sec">
         <div class="lbl">Words</div>
@@ -109,12 +136,21 @@ button:disabled{opacity:.5;cursor:default}
         <button id="regrow" class="ghost" style="align-self:flex-start">Regrow garden</button>
       </div>
       <div class="sec">
+        <div class="lbl">Flower</div>
+        <div class="chips" id="p-flower"></div>
+      </div>
+      <div class="sec">
+        <div class="lbl">Typeface</div>
+        <div class="chips" id="p-font"></div>
+      </div>
+      <div class="sec">
         <div class="lbl">Motion</div>
         <div id="presets" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+        <div id="p-motion"></div>
       </div>
       <div class="sec">
         <div class="lbl">Palette</div>
-        <div id="pcards" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div>
+        <div id="pcards" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"></div>
       </div>
       <div class="sec" style="border-top:1px solid #1E1E1E;padding-top:20px">
         <div class="lbl">Export · 1080 × 1080 loop</div>
@@ -139,9 +175,19 @@ class TypeGarden {
   cv = { current: $('cv') };
   inp = { current: $('inp') };
   pcv = { current: $('pcv') };
-  props = { boil: true, recoil: 20, density: 1, showHint: true };
+  props = { recoil: 20, density: 1, showHint: true };
   SENT = String.fromCharCode(0x200b); // kept in the hidden field so Backspace on an empty field still reports
-  F = '"Playfair Display",Georgia,serif';
+  FONTS = [
+    { id: 'serif', label: 'Serif', family: '"Playfair Display",Georgia,serif', w: 700, st: 'normal', gf: 'Playfair+Display:wght@700' },
+    { id: 'italic', label: 'Italic', family: '"Playfair Display",Georgia,serif', w: 700, st: 'italic', gf: 'Playfair+Display:ital,wght@1,700' },
+    { id: 'sans', label: 'Sans', family: '"Bricolage Grotesque",system-ui,sans-serif', w: 700, st: 'normal', gf: 'Bricolage+Grotesque:wght@700' },
+    { id: 'script', label: 'Script', family: '"Dancing Script",cursive', w: 700, st: 'normal', gf: 'Dancing+Script:wght@700' },
+    { id: 'wide', label: 'Wide', family: '"Unbounded",system-ui,sans-serif', w: 700, st: 'normal', gf: 'Unbounded:wght@700' },
+    { id: 'mono', label: 'Mono', family: '"Space Mono",ui-monospace,monospace', w: 700, st: 'normal', gf: 'Space+Mono:wght@700' }
+  ];
+  KINDS = ['rose', 'tulip', 'daisy', 'poppy', 'blossom', 'wild'];
+  FLOWERS = [['rose', 'Rose'], ['tulip', 'Tulip'], ['daisy', 'Daisy'], ['poppy', 'Poppy'], ['blossom', 'Cherry blossom'], ['wild', 'Wildflower'], ['mix', 'Mix']];
+  WEATHER = [['none', 'Nothing'], ['petals', 'Falling petals'], ['pollen', 'Pollen'], ['both', 'Both']];
   C = { red: '#FF1400', blue: '#3257FF', line: '#FFB4A8', text: '#FFFFFF', vein: '#000000' };
   PRESETS = [
     { id: 'breathe', label: 'Breathe', sub: 'Slow sway · 3s', T: 3000 },
@@ -150,7 +196,10 @@ class TypeGarden {
     { id: 'wind', label: 'Gust', sub: 'Wind sweeps through · 4s', T: 4000 },
     { id: 'reach', label: 'Reach', sub: 'Stems follow a light · 6s', T: 6000 },
     { id: 'scatter', label: 'Scatter', sub: 'Random bloom, fade · 6s', T: 6000 },
-    { id: 'visit', label: 'Visitor', sub: 'Butterfly drops by · 7s', T: 7000 }
+    { id: 'visit', label: 'Visitor', sub: 'Butterfly drops by · 7s', T: 7000 },
+    { id: 'fall', label: 'Petal fall', sub: 'Petals drift down · 6s', T: 6000 },
+    { id: 'pollen', label: 'Pollen', sub: 'Motes float up · 5s', T: 5000 },
+    { id: 'pulse', label: 'Pulse', sub: 'Blooms beat in a wave · 4s', T: 4000 }
   ];
   // name, background, flower, stem & leaf, flower line, type
   PAL = [
@@ -163,23 +212,61 @@ class TypeGarden {
     ['Tomato', '#FF1400', '#FFF1E0', '#0B0B0B', '#FF1400', '#000000'],
     ['Butter', '#FFE9A8', '#E4002B', '#0F5132', '#FFC2C2', '#1A1A1A'],
     ['Blush', '#FAD4D8', '#C8102E', '#274690', '#FFE3E6', '#1A1A1A'],
-    ['Mono', '#000000', '#F2F2F2', '#6E6E6E', '#000000', '#FFFFFF']
+    ['Mono', '#000000', '#F2F2F2', '#6E6E6E', '#000000', '#FFFFFF'],
+    ['Sakura', '#FFF1F3', '#F48FB1', '#6B4F3A', '#FFFFFF', '#3B2A33'],
+    ['Ocean', '#06283D', '#FFB703', '#47B5FF', '#FB8500', '#E8F6FF'],
+    ['Lavender', '#ECE7F8', '#7B5CD6', '#2F6B4F', '#D9CCFF', '#1F1535'],
+    ['Sunset', '#2B0F3A', '#FF6B35', '#F7C548', '#FFD3B8', '#FFF1E6'],
+    ['Forest', '#0B2318', '#F2EBD3', '#4F9D69', '#C2A65A', '#F2EFE3'],
+    ['Ink', '#FFFFFF', '#111111', '#111111', '#FFFFFF', '#111111'],
+    ['Neon', '#0A0A0A', '#FF2D95', '#00F5D4', '#FFE600', '#F5F5F5'],
+    ['Terracotta', '#F4E3D3', '#C4512D', '#3F5E3A', '#F6C7A8', '#2B1A12'],
+    ['Sky', '#CFE8FF', '#FF4F79', '#1D4ED8', '#FFD1DC', '#0B1B3A'],
+    ['Gold', '#121212', '#E9B949', '#7C8A5A', '#6B4400', '#F5E9C8']
   ];
-  state = { mode: 'type', preset: 'breathe', palette: 0, text: 'in bloom', seed: 7, status: '', busy: false };
+  state = { mode: 'type', preset: 'breathe', palette: 0, text: 'in bloom', seed: 7, status: '', busy: false,
+    flower: 'rose', font: 'serif', grow: 1, shake: 1, weather: 'none', open: false };
+  SAVED = ['palette', 'flower', 'font', 'grow', 'shake', 'weather', 'preset'];
 
-  setState(patch, cb) { Object.assign(this.state, patch); this.ui(); if (cb) cb(); }
+  setState(patch, cb) {
+    Object.assign(this.state, patch);
+    if (this.SAVED.some(k => k in patch)) {
+      const o = {}; for (const k of this.SAVED) o[k] = this.state[k];
+      try { localStorage.setItem('tg-garden', JSON.stringify(o)); } catch (e) {}
+    }
+    this.ui(); if (cb) cb();
+  }
+  restore() {
+    let o = null; try { o = JSON.parse(localStorage.getItem('tg-garden') || 'null'); } catch (e) {}
+    if (!o) return;
+    const s = this.state, num = (v, a, b) => typeof v === 'number' && v >= a && v <= b;
+    if (Number.isInteger(o.palette) && this.PAL[o.palette]) s.palette = o.palette;
+    if (this.FLOWERS.some(f => f[0] === o.flower)) s.flower = o.flower;
+    if (this.FONTS.some(f => f.id === o.font)) s.font = o.font;
+    if (this.WEATHER.some(w => w[0] === o.weather)) s.weather = o.weather;
+    if (this.PRESETS.some(p => p.id === o.preset)) s.preset = o.preset;
+    if (num(o.grow, 0.3, 3)) s.grow = o.grow;
+    if (num(o.shake, 0, 3)) s.shake = o.shake;
+  }
+  face() { return this.FONTS.find(f => f.id === this.state.font) || this.FONTS[0]; }
+  fnt(S) { const f = this.face(); return `${f.st} ${f.w} ${S}px ${f.family}`; }
+  fontChanged() {
+    this.cache = {}; this.layout(); this.buildPoster();
+    if (document.fonts) document.fonts.load(this.fnt(100)).then(() => { this.cache = {}; this.layout(); this.buildPoster(); }).catch(() => {});
+  }
 
   mount() {
+    this.restore();
     this.buildUI();
     this.letters = []; this.uid = 1; this.cache = {}; this.Sd = 0; this.St = 0; this.wrapped = false;
     this.t0 = performance.now(); this.lastKey = 0; this.rand = Math.random;
     this.g = this.cv.current.getContext('2d');
-    this.onResize = () => this.resize();
+    this.onResize = () => { this.resize(); this.placePanel(); };
     window.addEventListener('resize', this.onResize);
     this.resize();
     this.onKey = e => this.key(e);
     window.addEventListener('keydown', this.onKey);
-    this.fa = {}; this.mx = null; this.flies = []; this.perch = [];
+    this.fa = {}; this.mx = null; this.flies = []; this.perch = []; this.parts = [];
     this.onMove = e => { this.mx = e.clientX; this.my = e.clientY; };
     this.onLeave = () => { this.mx = null; };
     window.addEventListener('pointermove', this.onMove);
@@ -206,7 +293,7 @@ class TypeGarden {
     if (/[?&]tgtest/.test(location.search)) window.__tg = this;
     document.addEventListener('pointerleave', this.onLeave);
     document.documentElement.addEventListener('mouseleave', this.onLeave);
-    if (document.fonts) document.fonts.load(`700 100px ${this.F}`).then(() => { this.cache = {}; this.layout(); this.buildPoster(); }).catch(() => {});
+    if (document.fonts) document.fonts.load(this.fnt(100)).then(() => { this.cache = {}; this.layout(); this.buildPoster(); }).catch(() => {});
     this.vmime = typeof MediaRecorder !== 'undefined' ? ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) : null;
     this.buildPoster();
     const loop = () => { this.raf = requestAnimationFrame(loop); this.frame(); };
@@ -220,10 +307,12 @@ class TypeGarden {
     const app = $('app');
     app.addEventListener('pointerdown', ev => {
       if (this.state.mode !== 'type' || !this.inp.current) return;
+      if (ev.target.closest && ev.target.closest('#gpanel')) return; // let chips and sliders take the pointer
       const touch = ev && ev.pointerType && ev.pointerType !== 'mouse', onCanvas = ev && ev.target === this.cv.current;
       // touch: leave focus (and the keyboard) where it is while tapping; the tap's click opens the keyboard
       if (touch) { if (ev.cancelable && (onCanvas || (ev.target.closest && ev.target.closest('button')))) ev.preventDefault(); }
       else this.inp.current.focus({ preventScroll: true });
+      if (onCanvas && this.state.open) { this.setState({ open: false }); return; }
       if (onCanvas) this.spawnFly(ev.clientX, ev.clientY);
     });
     app.addEventListener('click', ev => {
@@ -234,12 +323,28 @@ class TypeGarden {
       const b = mk('button', 'mode', label);
       b.addEventListener('click', () => {
         const s = this.state;
-        if (id === 'poster' && s.mode !== 'poster') this.upd({ mode: 'poster', text: this.liveText() || s.text });
+        if (id === 'poster' && s.mode !== 'poster') this.upd({ mode: 'poster', open: false, text: this.liveText() || s.text });
         else if (id === 'type') { this.setState({ mode: 'type' }, () => { this.resize(); this.inp.current && this.inp.current.focus({ preventScroll: true }); }); }
       });
       $('modes').appendChild(b);
       return [id, b];
     });
+
+    $('gbtn').addEventListener('click', e => { e.stopPropagation(); this.setState({ open: !this.state.open }, () => { this.placePanel(); this.refocus(); }); });
+    $('png').addEventListener('click', () => { this.savePNG(); this.refocus(); });
+    $('svg').addEventListener('click', () => { this.saveSVG(); this.refocus(); });
+
+    // ---------- garden settings (shared by the typing panel and the poster panel) ----------
+    this.groups = []; this.sliders = [];
+    const fontStyle = f => `font-family:${f.family.replace(/"/g, "'")};font-weight:${f.w};font-style:${f.st};font-size:15px;letter-spacing:0`;
+    const fonts = this.FONTS.map(f => [f.id, f.label, fontStyle(f)]);
+    for (const pre of ['g', 'p']) {
+      this.chips($(pre + '-flower'), 'flower', this.FLOWERS);
+      this.chips($(pre + '-font'), 'font', fonts);
+      if (pre === 'g') this.slider($('g-motion'), 'grow', 'Growth', 0.3, 3, 0.1, v => v.toFixed(1) + '×');
+      this.slider($(pre + '-motion'), 'shake', 'Shake', 0, 3, 0.1, v => v ? v.toFixed(1) + '×' : 'off');
+    }
+    this.chips($('g-weather'), 'weather', this.WEATHER);
 
     this.swatches = this.PAL.map((p, i) => {
       const b = mk('button');
@@ -247,11 +352,9 @@ class TypeGarden {
       b.style.background = p[1];
       const d = mk('span'); d.setAttribute('data-tg', 'dot'); d.style.background = p[2]; b.appendChild(d);
       b.addEventListener('click', e => this.pickPalette(e, i));
-      $('pal').appendChild(b);
+      $('g-pal').appendChild(b);
       return b;
     });
-    $('png').addEventListener('click', () => { this.savePNG(); this.refocus(); });
-    $('svg').addEventListener('click', () => { this.saveSVG(); this.refocus(); });
 
     $('ptext').addEventListener('change', e => this.upd({ text: e.target.value }));
     $('regrow').addEventListener('click', () => this.upd({ seed: Math.floor(Math.random() * 1e6) }));
@@ -263,11 +366,11 @@ class TypeGarden {
     });
     this.pcards = this.PAL.map((p, i) => {
       const b = mk('button', 'pcard',
-        `<span style="display:flex;align-items:center;justify-content:center;height:44px;border-radius:8px;background:${p[1]}">` +
-        `<span style="width:18px;height:18px;border-radius:50%;background:${p[2]}"></span>` +
-        `<span style="width:12px;height:12px;border-radius:50%;background:${p[3]};margin-left:-4px"></span>` +
-        `<span class="serif" style="font-size:18px;color:${p[5]};margin-left:8px">Aa</span></span>` +
-        `<span style="padding:0 4px">${p[0]}</span>`);
+        `<span style="display:flex;align-items:center;justify-content:center;height:36px;border-radius:8px;background:${p[1]}">` +
+        `<span style="width:14px;height:14px;border-radius:50%;background:${p[2]}"></span>` +
+        `<span style="width:9px;height:9px;border-radius:50%;background:${p[3]};margin-left:-3px"></span>` +
+        `<span class="serif" style="font-size:15px;color:${p[5]};margin-left:6px">Aa</span></span>` +
+        `<span style="padding:0 2px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p[0]}</span>`);
       b.setAttribute('aria-label', p[0]);
       b.addEventListener('click', e => this.pickPalette(e, i));
       $('pcards').appendChild(b);
@@ -276,21 +379,52 @@ class TypeGarden {
     $('vbtn').addEventListener('click', () => this.exportVideo());
     $('fbtn').addEventListener('click', () => this.exportFrames());
   }
+  chips(box, key, items) {
+    const list = items.map(([v, label, css]) => {
+      const b = mk('button', 'chip', label);
+      if (css) b.style.cssText = css;
+      b.addEventListener('click', e => { e.stopPropagation(); this.setState({ [key]: v }, () => { if (key === 'font') this.fontChanged(); this.refocus(); }); });
+      box.appendChild(b);
+      return [v, b];
+    });
+    this.groups.push({ key, list });
+  }
+  slider(box, key, label, min, max, step, fmt) {
+    const row = mk('label', 'srow', `<span>${label}</span>`), input = mk('input'), out = mk('span', 'sval');
+    Object.assign(input, { type: 'range', min, max, step });
+    input.addEventListener('input', () => this.setState({ [key]: +input.value }));
+    input.addEventListener('change', () => this.refocus());
+    row.append(input, out); box.appendChild(row);
+    this.sliders.push({ key, input, out, fmt });
+  }
+  placePanel() {
+    const gp = $('gpanel'); if (gp.hidden) return;
+    const ar = $('app').getBoundingClientRect(), br = $('bar').getBoundingClientRect();
+    gp.style.bottom = Math.round(ar.bottom - br.top + 10) + 'px';
+    gp.style.maxHeight = Math.max(160, Math.round(br.top - ar.top - 70)) + 'px';
+  }
   pickPalette(e, i) { e && e.stopPropagation && e.stopPropagation(); this.setState({ palette: i }, () => this.refocus()); }
   ui() {
-    const s = this.state, isType = s.mode === 'type', pr = this.preset(), pc = this.pal();
-    const on = (v, a, b) => v ? a : b;
+    const s = this.state, isType = s.mode === 'type', pr = this.preset(), pc = this.pal(), f = this.face();
+    const on = (v, a, b) => v ? a : b, de = document.documentElement.style;
+    de.setProperty('--tg-font', f.family); de.setProperty('--tg-fw', f.w); de.setProperty('--tg-fst', f.st);
     $('app').style.background = pc.bg;
     this.cv.current.style.display = isType ? 'block' : 'none';
     for (const [id, b] of this.modeBtns) { b.style.background = on(s.mode === id, '#FFFFFF', 'transparent'); b.style.color = on(s.mode === id, '#000000', '#BDBDBD'); }
     $('bar').hidden = !(isType && (this.props.showHint ?? true));
     $('bar').style.color = pc.C.text;
-    $('pal').style.background = pc.bg;
+    $('credit').hidden = !isType; $('credit').style.color = pc.C.text;
+    $('gpanel').hidden = !(isType && s.open);
+    $('gbtn').setAttribute('aria-expanded', String(isType && s.open));
+    $('gdot').style.background = pc.C.red;
+    $('g-palname').textContent = this.PAL[s.palette][0];
     this.swatches.forEach((b, i) => {
       const p = this.PAL[i];
-      b.style.border = `1.5px solid ${on(s.palette === i, pc.C.text, p[1] === pc.bg ? '#3A3A3A' : 'transparent')}`;
+      b.style.border = `1.5px solid ${on(s.palette === i, '#FFFFFF', p[1] === '#0A0A0A' || p[1] === '#000000' ? '#3A3A3A' : 'transparent')}`;
       b.style.transform = `scale(${on(s.palette === i, 1.1, 1)})`;
     });
+    for (const g of this.groups) for (const [v, b] of g.list) b.setAttribute('aria-pressed', String(s[g.key] === v));
+    for (const sl of this.sliders) { if (document.activeElement !== sl.input) sl.input.value = s[sl.key]; sl.out.textContent = sl.fmt(s[sl.key]); }
     $('poster').hidden = isType;
     $('info').textContent = `1:1 · ${pr.T / 1000}s loop · 30 fps`;
     if (document.activeElement !== $('ptext')) $('ptext').value = s.text;
@@ -300,7 +434,6 @@ class TypeGarden {
     $('vbtn').disabled = s.busy; $('fbtn').disabled = s.busy;
     $('status').textContent = s.status;
   }
-
   spawnFly(cx, cy) {
     if (this.flies.length >= 6) { const o = this.flies.find(f => f.st !== 'leave'); if (o) this.flyOff(o); }
     const taken = new Set(this.flies.filter(f => f.st !== 'leave').map(f => f.pid));
@@ -422,7 +555,7 @@ class TypeGarden {
       fill: (p, col) => { g.beginPath(); this.path(g, p, true); g.fillStyle = col; g.fill(); },
       stroke: (p, col, w) => { g.beginPath(); this.path(g, p, false); g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.lineJoin = 'round'; g.stroke(); },
       rect: (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); },
-      text: (ch, x, y, S, col) => { g.font = `700 ${S}px ${this.F}`; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillStyle = col; g.fillText(ch, x, y); }
+      text: (ch, x, y, S, col) => { g.font = this.fnt(S); g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillStyle = col; g.fillText(ch, x, y); }
     };
   }
   vine(base, dir, len, amp, waves, ph, bend, n) {
@@ -466,7 +599,7 @@ class TypeGarden {
   }
   mw(ch) {
     if (this.cache[ch] != null) return this.cache[ch];
-    this.g.font = `700 100px ${this.F}`;
+    this.g.font = this.fnt(100);
     let w = this.g.measureText(ch).width / 100;
     if (ch === ' ') w *= 1.4;
     return (this.cache[ch] = w);
@@ -573,6 +706,7 @@ class TypeGarden {
   // ---------- input ----------
   key(e) {
     if (this.state.mode !== 'type') return;
+    if (e.key === 'Escape' && this.state.open) { this.setState({ open: false }, () => this.refocus()); return; }
     if (e.metaKey || e.ctrlKey || e.altKey) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); e.shiftKey ? this.saveSVG() : this.savePNG(); }
       return;
@@ -705,14 +839,39 @@ class TypeGarden {
     B.fill([base, ...s1.slice(1, N), tip, tip, ...s2.slice(1, N).reverse(), base], this.cc.blue);
     if (L > 6) { const v = []; for (let i = 0; i <= 8; i++) v.push(ax(0.08 + 0.72 * i / 8)); B.stroke(v, this.cc.vein, Math.max(0.8, L * 0.03)); }
   }
-  rose(B, cx, cy, R, rot, e, a, tl) {
+  // a bloom's frame: rotation, plus the squash and shift that turn it toward the pointer (z = how far forward a part sits)
+  xf(cx, cy, R, rot, tl) {
     const cr = Math.cos(rot), sr = Math.sin(rot);
     const tm = tl ? Math.hypot(tl[0], tl[1]) : 0, ux = tm ? tl[0] / tm : 0, uy = tm ? tl[1] / tm : 0, sq = -0.28 * tm;
-    const T = (x, y, z = 0) => {
+    return (x, y, z = 0) => {
       let dx = x * cr - y * sr, dy = x * sr + y * cr;
       if (tm) { const k = (dx * ux + dy * uy) * sq; dx += k * ux + tl[0] * R * z; dy += k * uy + tl[1] * R * z; }
       return [cx + dx, cy + dy];
     };
+  }
+  kindOf(e) {
+    const k = this.state.flower;
+    return k === 'mix' ? this.KINDS[Math.floor(this.h(e.id * 3.7 + 1.3) * this.KINDS.length)] : k;
+  }
+  flower(B, cx, cy, R, rot, e, a, tl) {
+    const T = this.xf(cx, cy, R, rot, tl), k = this.kindOf(e);
+    (this[k] || this.rose).call(this, B, T, R, e, a);
+  }
+  ring(T, x, y, rx, ry, R, z, n = 14) {
+    const pts = []; for (let k = 0; k < n; k++) { const th = k / n * Math.PI * 2; pts.push(T((x + Math.cos(th) * rx) * R, (y + Math.sin(th) * ry) * R, z)); }
+    return pts;
+  }
+  circ(x, y, r, n = 12) { const pts = []; for (let k = 0; k < n; k++) { const th = k / n * Math.PI * 2; pts.push([x + Math.cos(th) * r, y + Math.sin(th) * r]); } return pts; }
+  // a loose petal, notched at the tip; fl squashes it as it flips over in the air
+  petalShape(B, x, y, s, rot, fl, col) {
+    const c = Math.cos(rot), sn = Math.sin(rot), pts = [];
+    for (let k = 0; k < 20; k++) {
+      const th = -Math.PI + k / 20 * Math.PI * 2, r = 1 - 0.28 * Math.exp(-th * th / 0.06), lx = Math.cos(th) * s * r * fl, ly = Math.sin(th) * s * 0.62 * r;
+      pts.push([x + lx * c - ly * sn, y + lx * sn + ly * c]);
+    }
+    B.fill(pts, col);
+  }
+  rose(B, T, R, e, a) {
     // petals, back to front: [cx, cy, rx, ry, angle, depth, edge]
     const P = [
       [0, -0.36, 0.56, 0.54, 0, 0, 0],
@@ -752,6 +911,121 @@ class TypeGarden {
     }
   }
 
+  // cup of four pointed petals that lean open as they bloom: [base x, lean, half width, height, depth, vein]
+  tulip(B, T, R, e, a) {
+    const C = this.cc, lw = Math.max(0.8, R * 0.045), by = 0.42;
+    const P = [[0, 0, 0.4, 1.12, 0, 0], [-0.1, -0.38, 0.38, 1.0, 0.08, 1], [0.1, 0.38, 0.38, 1.0, 0.08, 1], [0, 0.04, 0.33, 0.86, 0.16, 1]];
+    P.forEach((q, i) => {
+      const s = this.spr((a - i * 90) / 1000, 7, 12); if (s <= 0.001) return;
+      const h = q[3] * Math.min(1.08, s), w = q[2] * (0.5 + 0.5 * Math.min(1, s)), lean = q[1] * Math.min(1.15, s), ca = Math.cos(lean), sa = Math.sin(lean);
+      const at = (x, y) => T((q[0] + x * ca + y * sa) * R, (by + x * sa - y * ca) * R, q[4] * Math.min(1, y / h + 0.2));
+      const N = 12, Lf = [], Rt = [];
+      for (let k = 0; k <= N; k++) {
+        const u = k / N, hw = w * Math.pow(Math.sin(Math.PI * (0.1 + 0.9 * u)), 0.6) * (1 + 0.05 * Math.sin(u * 9 + e.ph1 + i));
+        Lf.push(at(-hw, u * h)); Rt.push(at(hw, u * h));
+      }
+      B.fill([...Lf, ...Rt.reverse()], C.red);
+      if (q[5] && R >= 10) {
+        const fr = this.eo((a - i * 90 - 350) / 450);
+        if (fr > 0) { const v = []; for (let k = 0; k <= 8; k++) { const u = 0.12 + 0.6 * k / 8; v.push(at(Math.sin(u * 3 + i) * w * 0.12, u * h)); } this.strokeRange(B, v, 0, fr, C.line, lw * 0.8); }
+      }
+    });
+  }
+  // a ring of slim petals unfurling one after another, then the disc and its seeds
+  daisy(B, T, R, e, a) {
+    const C = this.cc, n = 12 + Math.floor(this.h(e.id * 1.13) * 5), lw = Math.max(0.8, R * 0.04), sq = 0.84;
+    for (let i = 0; i < n; i++) {
+      const s = this.spr((a - i * 26) / 1000, 8, 14); if (s <= 0.001) continue;
+      const ang = e.ph1 + i / n * Math.PI * 2 + 0.06 * Math.sin(i * 2.3 + e.ph2), L = 0.98 * s, r0 = 0.12;
+      const c = (r0 + L) / 2, rx = Math.max(0.01, (L - r0) / 2), ry = 0.14 * (0.5 + 0.5 * Math.min(1, s)), ca = Math.cos(ang), sa = Math.sin(ang);
+      const at = (lx, ly) => T((lx * ca - ly * sa) * R, (lx * sa + ly * ca) * sq * R, 0);
+      const pts = []; for (let k = 0; k < 16; k++) { const th = k / 16 * Math.PI * 2; pts.push(at(c + Math.cos(th) * rx, Math.sin(th) * ry * (1 + 0.15 * Math.cos(th)))); }
+      B.fill(pts, C.red);
+      if (R >= 16 && s > 0.6) this.strokeRange(B, [at(c - rx * 0.5, 0), at(c, 0), at(c + rx * 0.7, 0)], 0, Math.min(1, (s - 0.6) / 0.4), C.line, lw * 0.7);
+    }
+    const cs = this.eo((a - 160) / 380);
+    if (cs > 0) {
+      B.fill(this.ring(T, 0, 0, 0.27 * cs, 0.27 * cs * sq, R, 0.3), C.line);
+      const fr = this.eo((a - 420) / 500);
+      if (fr > 0 && R >= 10) for (let k = 0; k < 13 && k / 13 <= fr; k++) {
+        const th = k * 2.39996 + e.ph2, rr = 0.2 * Math.sqrt((k + 0.5) / 13);
+        B.fill(this.ring(T, Math.cos(th) * rr, Math.sin(th) * rr * sq, 0.035, 0.035, R, 0.32, 8), C.red);
+      }
+    }
+  }
+  // four broad, ruffled petals around a dark seed head ringed with stamens
+  poppy(B, T, R, e, a) {
+    const C = this.cc, lw = Math.max(0.8, R * 0.045), sq = 0.86;
+    [-2.25, -0.9, 2.35, 0.8].forEach((a0, i) => {
+      const s = this.spr((a - i * 95) / 1000, 7, 12); if (s <= 0.001) return;
+      const ang = a0 + (e.ph2 - 3.14) * 0.08 + (1 - Math.min(1, s)) * (i % 2 ? -0.7 : 0.7), d = 0.34 * s, rx = 0.56 * s, ry = 0.52 * s, ca = Math.cos(ang), sa = Math.sin(ang), z = i > 1 ? 0.1 : 0;
+      const at = (lx, ly) => T((lx * ca - ly * sa) * R, (lx * sa + ly * ca) * sq * R, z);
+      const pts = [];
+      for (let k = 0; k < 24; k++) { const th = k / 24 * Math.PI * 2, rr = 1 + 0.07 * Math.sin(5 * th + e.ph1 + i * 1.7) + 0.04 * Math.sin(9 * th + e.ph2); pts.push(at(d + Math.cos(th) * rx * rr, Math.sin(th) * ry * rr)); }
+      B.fill(pts, C.red);
+      if (R >= 12 && s > 0.5) {
+        const fr = Math.min(1, (s - 0.5) / 0.5);
+        for (const off of [-0.18, 0.2]) {
+          const v = []; for (let k = 0; k <= 8; k++) { const u = k / 8; v.push(at(0.12 + u * (d + rx * 0.55), off * u * ry + Math.sin(u * 4 + i) * 0.03)); }
+          this.strokeRange(B, v, 0, fr * (off < 0 ? 1 : 0.8), C.line, lw * 0.75);
+        }
+      }
+    });
+    const cs = this.eo((a - 300) / 450);
+    if (cs > 0) {
+      for (let k = 0; k < 16 && k / 16 <= cs; k++) {
+        const th = k / 16 * Math.PI * 2 + e.ph1, cx = Math.cos(th), sy = Math.sin(th) * sq;
+        B.stroke([T(cx * 0.13 * R, sy * 0.13 * R, 0.3), T(cx * 0.29 * R, sy * 0.29 * R, 0.3)], C.blue, lw * 0.8);
+      }
+      B.fill(this.ring(T, 0, -0.02, 0.15 * cs, 0.13 * cs, R, 0.34), C.blue);
+      if (R >= 10) for (let k = 0; k < 4; k++) {
+        const th = k / 4 * Math.PI + e.ph2, x = Math.cos(th) * 0.11 * cs, y = Math.sin(th) * 0.09 * cs;
+        B.stroke([T(-x * R, (-0.02 - y) * R, 0.36), T(x * R, (-0.02 + y) * R, 0.36)], C.line, lw * 0.6);
+      }
+    }
+  }
+  // five notched petals that twist open, then a spray of stamens
+  blossom(B, T, R, e, a) {
+    const C = this.cc, lw = Math.max(0.8, R * 0.04), sq = 0.9;
+    for (let i = 0; i < 5; i++) {
+      const s = this.spr((a - i * 60) / 1000, 8, 13); if (s <= 0.001) continue;
+      const ang = e.ph1 + i / 5 * Math.PI * 2 + (1 - Math.min(1, s)) * 0.9, c = 0.46 * s, rx = 0.44 * s, ry = 0.36 * s, ca = Math.cos(ang), sa = Math.sin(ang);
+      const at = (lx, ly) => T((lx * ca - ly * sa) * R, (lx * sa + ly * ca) * sq * R, 0);
+      const pts = [];
+      for (let k = 0; k < 32; k++) { const th = -Math.PI + k / 32 * Math.PI * 2, r = 1 - 0.24 * Math.exp(-th * th / 0.035); pts.push(at(c + Math.cos(th) * rx * r, Math.sin(th) * ry * r)); }
+      B.fill(pts, C.red);
+      if (R >= 12 && s > 0.5) this.strokeRange(B, [at(0.08, 0), at(c * 0.5, 0.01), at(c * 0.85, 0)], 0, Math.min(1, (s - 0.5) / 0.5), C.line, lw * 0.8);
+    }
+    const cs = this.eo((a - 260) / 420);
+    if (cs > 0) {
+      for (let k = 0; k < 10; k++) {
+        const th = k / 10 * Math.PI * 2 + e.ph2, r = (0.28 + 0.1 * this.h(e.id + k * 1.7)) * cs, x = Math.cos(th) * r, y = Math.sin(th) * r * sq;
+        B.stroke([T(0, 0, 0.3), T(x * R, y * R, 0.3)], C.line, lw * 0.7);
+        if (R >= 10) B.fill(this.ring(T, x, y, 0.04, 0.04, R, 0.3, 8), C.line);
+      }
+      B.fill(this.ring(T, 0, 0, 0.08 * cs, 0.08 * cs, R, 0.3, 10), C.line);
+    }
+  }
+  // a sprig: a few tiny five-petal florets and buds on short stalks
+  wild(B, T, R, e, a) {
+    const C = this.cc, lw = Math.max(0.8, R * 0.05), n = 3 + Math.floor(this.h(e.id * 2.17) * 3), y0 = 0.2;
+    for (let j = 0; j < n; j++) {
+      const hh = k => this.h(e.id * 0.71 + j * 13.1 + k * 3.3);
+      const s = this.spr((a - j * 70) / 1000, 7, 12); if (s <= 0.001) continue;
+      const ang = -Math.PI / 2 + (j - (n - 1) / 2) * 0.62 + (hh(1) - 0.5) * 0.35, len = (0.5 + 0.35 * hh(2)) * Math.min(1, s);
+      const fx = Math.cos(ang) * len, fy = y0 + Math.sin(ang) * len, fr = 0.24 * (0.75 + 0.5 * hh(3)) * s;
+      B.stroke([T(0, y0 * R, 0), T((fx * 0.5 + Math.cos(ang + 0.3) * 0.05) * R, ((y0 + fy) / 2) * R, 0.1), T(fx * R, fy * R, 0.2)], C.blue, lw);
+      if (hh(4) < 0.28) {
+        const ca = Math.cos(ang), sa = Math.sin(ang), pts = [];
+        for (let k = 0; k < 12; k++) { const th = k / 12 * Math.PI * 2, lx = Math.cos(th) * fr * 0.5, ly = Math.sin(th) * fr * 0.32; pts.push(T((fx + lx * ca - ly * sa) * R, (fy + lx * sa + ly * ca) * R, 0.22)); }
+        B.fill(pts, C.red);
+      } else {
+        for (let p = 0; p < 5; p++) { const pa = hh(5) * 6 + p / 5 * Math.PI * 2; B.fill(this.ring(T, fx + Math.cos(pa) * fr * 0.55, fy + Math.sin(pa) * fr * 0.55, fr * 0.48, fr * 0.48, R, 0.22, 10), C.red); }
+        B.fill(this.ring(T, fx, fy, fr * 0.3, fr * 0.3, R, 0.25, 10), C.line);
+      }
+    }
+  }
+
   // ---------- render (shared by typing view + poster) ----------
   frame() {
     const now = performance.now(), dt = Math.min(64, now - (this.lt || now)); this.lt = now;
@@ -768,13 +1042,38 @@ class TypeGarden {
     this.paint(now, true);
   }
   pal() { const p = this.PAL[this.state.palette] || this.PAL[0]; return { bg: p[1], C: { red: p[2], blue: p[3], line: p[4], text: p[5], vein: p[1] } }; }
-  mainState() { return { letters: this.letters, S: this.Sd, C: this.pal().C, boil: this.props.boil ?? true, recoil: this.props.recoil ?? 20, speed: 1, wither: 260, face: true }; }
+  mainState() { const s = this.state; return { letters: this.letters, S: this.Sd, C: this.pal().C, boil: s.shake > 0, shake: s.shake, recoil: this.props.recoil ?? 20, speed: s.grow, wither: 260, face: true }; }
+  pollenCol(C) { return C.line.toLowerCase() === C.vein.toLowerCase() ? C.text : C.line; }
+  // petals shaken loose from open blooms, and pollen drifting up; the pointer blows them aside
+  weather(g, B, now, C) {
+    const dt = Math.min(64, now - (this._wt || now)); this._wt = now;
+    const w = this.state.weather, pet = w === 'petals' || w === 'both', pol = w === 'pollen' || w === 'both', rnd = Math.random;
+    if ((pet || pol) && this.parts.length < 360) for (const p of this.perch) {
+      if (pet && rnd() < dt * 0.00022) this.parts.push({ k: 0, x: p.x + (rnd() - 0.5) * p.R, y: p.y + (rnd() - 0.5) * p.R * 0.6, vx: (rnd() - 0.5) * 0.04, vy: 0, r: rnd() * 6.28, vr: (rnd() - 0.5) * 0.003, s: Math.max(3, p.R * (0.2 + rnd() * 0.12)), t: 0, life: 5000 + rnd() * 4000, ph: rnd() * 6.28 });
+      if (pol && rnd() < dt * 0.0005) { const vb = -0.008 - rnd() * 0.018; this.parts.push({ k: 1, x: p.x + (rnd() - 0.5) * p.R * 0.8, y: p.y - p.R * 0.2, vx: (rnd() - 0.5) * 0.02, vy: vb, vb, s: Math.max(1, this.Sd * 0.009 * (0.6 + rnd())), t: 0, life: 2500 + rnd() * 2500, ph: rnd() * 6.28 }); }
+    }
+    const pc = this.pollenCol(C);
+    this.parts = this.parts.filter(q => {
+      q.t += dt; if (q.t > q.life || q.y > this.H + 40 || q.y < -40) return false;
+      if (this.mx != null) { const dx = q.x - this.mx, dy = q.y - this.my, d = Math.hypot(dx, dy); if (d < 140 && d > 1) { const f = (1 - d / 140) * 0.0012 * dt; q.vx += dx / d * f; q.vy += dy / d * f * 0.5; } }
+      q.vx *= 1 - Math.min(0.5, 0.01 * dt / 16);
+      if (q.k === 0) { q.vy = Math.min(0.06, q.vy + 0.00003 * dt); q.x += q.vx * dt + Math.sin(q.t * 0.002 + q.ph) * 0.4; q.y += q.vy * dt; q.r += q.vr * dt; }
+      else { q.vy += (q.vb - q.vy) * 0.02; q.x += q.vx * dt + Math.sin(q.t * 0.0013 + q.ph) * 0.2; q.y += q.vy * dt; }
+      const fade = Math.max(0, Math.min(1, q.t / 300, (q.life - q.t) / 800));
+      g.globalAlpha = fade * (q.k ? 0.55 + 0.45 * Math.sin(q.t * 0.006 + q.ph) : 1);
+      if (q.k === 0) this.petalShape(B, q.x, q.y, q.s, q.r, 0.3 + 0.7 * Math.abs(Math.cos(q.t * 0.003 + q.ph)), C.red);
+      else B.fill(this.circ(q.x, q.y, q.s), pc);
+      g.globalAlpha = 1;
+      return true;
+    });
+  }
   paint(now, caret) {
     const g = this.g, d = this.dpr;
     if (!d) return;
     g.setTransform(d, 0, 0, d, 0, 0); g.fillStyle = this.pal().bg; g.fillRect(0, 0, this.W, this.H);
     const B = this.backend(g), st = this.mainState();
     this.render(B, now, st);
+    this.weather(g, B, now, st.C);
     this.drawFlies(B, now, st.C);
     if (caret) {
       const S = this.Sd, on = now - this.lastKey < 500 || Math.floor(now / 530) % 2 === 0, hf = this.eo((now - this.t0) / 600);
@@ -793,7 +1092,7 @@ class TypeGarden {
       const c = l.lean || (l.lean = [0, 0]);
       c[0] += (tx - c[0]) * 0.07; c[1] += (ty - c[1]) * 0.07;
     }
-    const f = st.boil ? Math.floor(now / 120) : 0, amp = st.boil ? Math.max(0.8, S * 0.01) : 0;
+    const f = st.boil ? Math.floor(now / 120) : 0, amp = st.boil ? Math.max(0.8, S * 0.01) * (st.shake ?? 1) : 0;
     const kd = l => l.dead ? 1 - this.eo((now - l.dead) / st.wither) : 1;
     const draw = layer => {
       for (const l of L) {
@@ -851,8 +1150,9 @@ class TypeGarden {
       const a = age - e.d0; if (a < 0) return;
       if (kk <= 0.001) return;
       const p = wx(e.x, e.y), tl = st.face ? this.faceTurn(e, p[0], p[1]) : null;
-      if ((st.face || st.perchOn) && !l.dead && a > 700) this.perch.push({ id: e.id, x: p[0], y: p[1], R: e.R * S * kk });
-      this.rose(B, p[0], p[1], e.R * S * kk, e.rot + j[2] + rw + (tl ? tl[0] * 0.22 : 0), e, a, tl);
+      const R = e.R * S * kk * (st.fscale ? st.fscale(e, l) : 1);
+      if ((st.face || st.perchOn) && !l.dead && a > 700) this.perch.push({ id: e.id, x: p[0], y: p[1], R });
+      this.flower(B, p[0], p[1], R, e.rot + j[2] + rw + (tl ? tl[0] * 0.22 : 0), e, a, tl);
     }
   }
 
@@ -923,6 +1223,23 @@ class TypeGarden {
     else { const burst = (t > 2.4 && t < 2.8) || (t > 5 && t < 5.3); o = burst ? 0.2 + 0.8 * Math.abs(Math.cos(t * 9)) : 0.3 + 0.1 * Math.sin(t * 3); ang = 0; }
     this.butterfly(B, p[0], p[1], sz, ang, o, C);
   }
+  // loopable petals or pollen: each one travels a whole lap of the frame per loop, so the last frame meets the first
+  posterAir(g, B, tt, P, C) {
+    const Z = 1080, S = P.S, u0 = tt / P.T, fall = P.preset === 'fall', n = fall ? 34 : 70, pc = this.pollenCol(C), TAU = Math.PI * 2;
+    for (let i = 0; i < n; i++) {
+      const h = k => this.h(i * 12.989 + k * 78.233 + this.state.seed), u = (u0 + h(1)) % 1;
+      if (fall) {
+        const y = -80 + u * (Z + 160), x = h(2) * Z + Math.sin(u * TAU * (1 + (i % 2)) + h(3) * 6.28) * 50;
+        const rot = h(4) * 6.28 + u * TAU * (i % 3 === 0 ? -1 : 1), fl = 0.3 + 0.7 * Math.abs(Math.cos(u * TAU * 3 + h(5) * 6.28));
+        this.petalShape(B, x, y, S * (0.05 + 0.04 * h(6)), rot, fl, C.red);
+      } else {
+        const y = Z + 60 - u * (Z + 120), x = h(2) * Z + Math.sin(u * TAU * 2 + h(3) * 6.28) * 30;
+        g.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(u * TAU * 3 + h(4) * 6.28));
+        B.fill(this.circ(x, y, Math.max(1.5, S * (0.008 + 0.012 * h(5)))), pc);
+        g.globalAlpha = 1;
+      }
+    }
+  }
   drawBg(g, Z) { g.fillStyle = this.pal().bg; g.fillRect(0, 0, Z, Z); }
   bars(B, P, st, spread, hf) {
     const S = P.S, byLine = {};
@@ -940,7 +1257,7 @@ class TypeGarden {
     g.setTransform(1, 0, 0, 1, 0, 0);
     this.drawBg(g, Z);
     const tt = ((t % P.T) + P.T) % P.T, L = P.letters, B = this.backend(g);
-    const st = { letters: L, S: P.S, C: pc.C, boil: this.props.boil ?? true, recoil: this.props.recoil ?? 20, speed: 1, wither: 600, textAll: true };
+    const st = { letters: L, S: P.S, C: pc.C, boil: this.state.shake > 0, shake: this.state.shake, recoil: this.props.recoil ?? 20, speed: 1, wither: 600, textAll: true };
     L.forEach(l => { l.x = l.tx; l.y = l.ty; l.dead = null; });
     const set = base => L.forEach(l => { l.birth = base + l.b; l.tb = l.birth; l.cut = l.cutRel != null ? l.birth + l.cutRel : null; });
     let bars = null;
@@ -978,6 +1295,14 @@ class TypeGarden {
         return [x + dx / d * s * S * 0.12 * f, y + dy / d * s * S * 0.06 * f];
       };
       st.rotw = e => { const a = Math.atan2(ly - e.y, lx - e.x); return Math.sin(a) * 0.15; };
+    } else if (P.preset === 'fall' || P.preset === 'pollen' || P.preset === 'pulse') {
+      set(-1e5);
+      const ph = tt / P.T * Math.PI * 2, S = P.S, amp = P.preset === 'pulse' ? 0.012 : 0.02;
+      st.warp = (x, y, l) => { const h = Math.max(0, (l.y - y) / S); return [x + Math.sin(ph + l.x * 0.004 + h * 1.1) * S * amp * h, y]; };
+      if (P.preset === 'pulse') {
+        st.fscale = (e, l) => 1 + 0.16 * Math.sin(ph * 2 - (l.x + e.x * S) * 0.009);
+        st.rotw = e => Math.sin(ph + e.id * 0.7) * 0.06;
+      } else st.rotw = e => Math.sin(ph + e.id * 0.7) * 0.08;
     } else if (P.preset === 'visit') {
       set(-1e5);
       st.perchOn = true; this.perch = [];
@@ -997,6 +1322,7 @@ class TypeGarden {
       B.fill(pts, st.C.line);
     }
     if (P.preset === 'visit') this.posterFly(B, tt, P, st.C);
+    if (P.preset === 'fall' || P.preset === 'pollen') this.posterAir(g, B, tt, P, st.C);
     if (P.preset === 'typed') {
       const born = st.letters, last = born[born.length - 1], S = P.S;
       if (Math.floor(tt / 400) % 2 === 0 || (last && tt - last.birth < 300)) {
@@ -1015,20 +1341,20 @@ class TypeGarden {
     this.paint(performance.now(), false);
     this.cv.current.toBlob(b => b && this.dl(b, 'garden.png'));
   }
-  // SVG: letters are written as <text> in Playfair Display (the original converted them to outlines
+  // SVG: letters are written as <text> in the chosen typeface (the original converted them to outlines
   // from a glyph file that shipped with GT Ultra); the font is imported so most viewers render it
   saveSVG() {
-    const n = v => Math.round(v * 100) / 100, parts = [];
+    const n = v => Math.round(v * 100) / 100, parts = [], f = this.face();
     const pb = () => ({ d: '', moveTo(x, y) { this.d += `M${n(x)} ${n(y)}`; }, lineTo(x, y) { this.d += `L${n(x)} ${n(y)}`; }, quadraticCurveTo(a, b, x, y) { this.d += `Q${n(a)} ${n(b)} ${n(x)} ${n(y)}`; }, closePath() { this.d += 'Z'; } });
     const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const B = {
       fill: (p, col) => { const b = pb(); this.path(b, p, true); parts.push(`<path d="${b.d}" fill="${col}"/>`); },
       stroke: (p, col, w) => { const b = pb(); this.path(b, p, false); parts.push(`<path d="${b.d}" fill="none" stroke="${col}" stroke-width="${n(w)}" stroke-linecap="round" stroke-linejoin="round"/>`); },
       rect: () => {},
-      text: (ch, x, y, S, col) => parts.push(`<text x="${n(x)}" y="${n(y)}" text-anchor="middle" font-family="Playfair Display, Georgia, serif" font-weight="700" font-size="${n(S)}" fill="${col}">${esc(ch)}</text>`)
+      text: (ch, x, y, S, col) => parts.push(`<text x="${n(x)}" y="${n(y)}" text-anchor="middle" font-family="${f.family.replace(/"/g, "'")}" font-weight="${f.w}" font-style="${f.st}" font-size="${n(S)}" fill="${col}">${esc(ch)}</text>`)
     };
     this.render(B, performance.now(), this.mainState());
-    const font = `<style>@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&amp;display=swap');</style>`;
+    const font = `<style>@import url('https://fonts.googleapis.com/css2?family=${f.gf}&amp;display=swap');</style>`;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${n(this.W)}" height="${n(this.H)}" viewBox="0 0 ${n(this.W)} ${n(this.H)}">${font}<rect width="100%" height="100%" fill="${this.pal().bg}"/>${parts.join('')}</svg>`;
     this.dl(new Blob([svg], { type: 'image/svg+xml' }), 'garden.svg');
   }
